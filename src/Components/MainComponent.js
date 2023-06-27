@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
+import useThrottle from '../Hooks/UseThrottle'
 import { useNavigate } from 'react-router'
+
 
 function MainComponent() {
 
@@ -7,24 +9,66 @@ function MainComponent() {
   const [items, setItems] = useState([])
   const [posts, setPosts] = useState({})
   const [id, setId] = useState('')
-  const [showById, setShowByID] = useState(false)
-  const [showInput, setShowInput] = useState(false)
+  const [isShowById, setIsShowByID] = useState(false)
+  const [isShowInput, setIsShowInput] = useState(false)
+  const [isShowSearch, setIsShowSearch] = useState(true)
   const focusInput = useRef(null)
   const [activeButton, setActiveButton] = useState('')
   const [isValidInput, setIsValidInput] = useState(true)
+  const [query, setQuery] = useState('')
   const navigate = useNavigate()
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  const throttledQuery = useThrottle(query, 500);
 
   const activeButtonClass = 'border-2 bg-red-500  py-2 px-3 text-white rounded-2xl'
-  const defaultButtonClass = 'border-2 bg-black hover:bg-gray-700 py-2 px-3 text-white rounded-2xl'
+  const defaultButtonClass = 'border-2 bg-black hovera:bg-gray-700 py-2 px-3 text-white rounded-2xl'
+
+ 
+
+  
+
+
+
+  const searchInObject = (obj, query) => {
+    for(let key in obj) {
+      let value = obj[key];
+      let valueType = typeof value;
+  
+      if(valueType === 'object' && value !== null) {
+        if(searchInObject(value, query)) {
+          return true;
+        }
+      } else if(valueType === 'string' && value.toLowerCase().includes(query.toLowerCase())) {
+        return true;
+      }
+    }
+  
+    return false;
+  }
+
+  const filtredItems = items.filter(item=> searchInObject(item, query))
+ 
+  const highlightText = useMemo(() => {
+    return (text, highlight) => {
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    return <span>{parts.map((part, i) =>
+      part.toLowerCase() === highlight.toLowerCase() ? <span key={i} style={{backgroundColor: 'yellow'}}>{part}</span> : part
+    )}</span>;
+  }
+}, [throttledQuery])
+  
 
  
 
 
   const showItemsByID = () => {
-    setShowByID(prevState => prevState + 1)
+    
     setItems([])
     setPosts('Input ID')
-    setShowByID(true)
+    setIsShowByID(true)
+    setIsShowSearch(false)
     
     
   }
@@ -35,8 +79,9 @@ function MainComponent() {
     setId('')
     setPosts({})
     setResourceType(resourceType)
-    setShowByID(false)
+    setIsShowByID(false)
     setIsValidInput(true)
+    setIsShowSearch(true)
   }
 
   const deletePost = (id) => {
@@ -44,7 +89,6 @@ function MainComponent() {
   }
 
   const handleClick = (resourceType) => {
-
    
     setResourceType(resourceType)
     setActiveButton(resourceType)
@@ -54,8 +98,9 @@ function MainComponent() {
     navigate('AddPost')
   }
 
-  
-    
+  useEffect(() => {
+    console.log(throttledQuery);
+  }, [throttledQuery]);
   
 
   useEffect(() => {
@@ -88,7 +133,7 @@ function MainComponent() {
 
     }
 
-    if (showInput) {
+    if (isShowInput) {
       focusInput.current.focus()
     }
 
@@ -96,16 +141,9 @@ function MainComponent() {
         if(focusInput.current) {
           focusInput.current.blur()
         }
-      }
-   
-      
-      
-  }, [resourceType, id, showById, showInput])
-
-  
-
+      }     
+  }, [resourceType, id, isShowById, isShowInput])
   return (
-
     <>
 <div >
   <div className='jusify-items-stretch mb-4'>
@@ -115,7 +153,7 @@ function MainComponent() {
       onChange={e => {
         if (e.target.value === 'show by ID') {
           showItemsByID()
-          setShowInput(true)
+          setIsShowInput(true)
           setActiveButton(resourceType)
           setIsValidInput(false)
 
@@ -124,7 +162,7 @@ function MainComponent() {
           
         } else if (e.target.value === 'show All') {
           showAllItems()
-          setShowInput(false)
+          setIsShowInput(false)
           setActiveButton(resourceType)
           setIsValidInput(true)
 
@@ -136,7 +174,7 @@ function MainComponent() {
         <option>show by ID</option>
     </select>
     </div>
-    {showInput && 
+    {isShowInput && 
     <input 
       className='border-solid shadow-lg border-2 border-black required:border-red-500 ' placeholder='ID required'
       type='text' ref={focusInput} value={id} required onChange={e => { 
@@ -150,7 +188,7 @@ function MainComponent() {
         
       }}/>}
       <div className=' absolute right-0 top-0'>
-      <button className='border-2 bg-black hover:bg-gray-700 py-2 px-3 text-white rounded-2xl'
+      <button className='default_btn'
       onClick={handleNavigate}>Add post</button>
       </div>
     
@@ -159,6 +197,12 @@ function MainComponent() {
     </div>
 
     <div className='flex-auto' >
+      <div>Search:{isShowSearch &&  
+        <input 
+          className='border-solid shadow-lg border-2 border-black required:border-red-500 '
+          placeholder='title body'
+          type='search' value={query} onChange={e=>setQuery(e.target.value)}/>}
+      </div>
     <button
       className={activeButton === 'posts'? activeButtonClass : defaultButtonClass}
       onClick={() => handleClick('posts')}
@@ -175,11 +219,13 @@ function MainComponent() {
     </div> 
   <div className='container mx-auto px-20 text-justify'>
     <div className='border-solid border-black border-2'>
-    <h1>{!showById && items.map(item => 
-      <li key={item.id}>{JSON.stringify(item, null, 2)}
-      <button className='border-2 bg-black hover:bg-gray-700 py-1 px-1 text-white rounded-2xl'
+    <h1>{!isShowById && filtredItems.map(item => 
+      <li key={item.id}>
+        {highlightText(JSON.stringify(item, null, 2), query)}
+      <button className='default_btn'
               onClick={()=>deletePost(item.id)}>Delete</button></li>)}</h1>
-    <h1>{showById && <span>{JSON.stringify(posts, null, 2)}</span>}</h1>
+    <h1>{isShowById && 
+    <span>{JSON.stringify(posts, null, 2)}</span>}</h1>
     </div>
   </div> 
 </div> 

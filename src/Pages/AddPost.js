@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router'
 
 function AddPost() {
 
-    const [input, setInput] = useState('')
-    const [posts, setPosts] = useState({title:'', body:''})
+    const [input, setInput] = useState({id:'', title:'', body:''})
+    const [posts, setPosts] = useState([])
 
     const navigate = useNavigate()
 
@@ -13,32 +13,35 @@ function AddPost() {
     }
 
     const handleInput = e => {
-        setInput({...posts, [e.target.name]:e.target.value})
+        setInput({...input, [e.target.name]:e.target.value})
     }
 
     const handleSubmit = e => {
-        e.preventdefault()
+        e.preventDefault()
+        setPosts(prev=>{
+            return [...posts, input]
+        })
         fetch('https://jsonplaceholder.typicode.com/posts', {
         method: 'POST',
-        body: JSON.stringify(posts),
+        body: JSON.stringify(input),
         headers: {
             'Content-type': 'application/json; charset=UTF-8'
         }
     })
+
+    
         
 
         .then(response => response.json())
         .then(json => console.log(json))
-        // .then(json => setPosts(json))
-        .catch(error => console.error(error))
-        
+        .catch(error => console.error(error))    
     }
   return (
    <> 
    <div className='relative text-center'>
       <h1>Add post</h1>
       <div className=' absolute top-0 right-0'>
-      <button className='border-2 bg-black hover:bg-gray-700 py-2 px-3 text-white rounded-2xl'
+      <button className='default_btn'
               onClick={handleNavigate}>Back</button>
       </div>
     </div>
@@ -49,9 +52,10 @@ function AddPost() {
         <input className='border-solid border-2 border-black'
                type='text' name='body' placeholder='Body' onChange={handleInput}/>
     </div>
-    <button className='border-2 bg-black hover:bg-gray-700 py-2 px-3 text-white rounded-2xl'
+    <button className='default_btn'
             type='submit'>Add post</button>
     </form>
+   {posts.map(post=><div>{post.body}{post.title}</div>)}
     </>
   )
 }
