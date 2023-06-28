@@ -5,6 +5,7 @@ import Header from './Header'
 import ButtonGroup from './ButtonGroup'
 import SearchInput from './SearchInput'
 import DataList from './DataList'
+import { fetchData } from './api'
 
 const searchInObject = (obj, query) => {
   for(let key in obj) {
@@ -53,25 +54,13 @@ function MainComponent() {
     navigate('AddPost')
   }
 
-  const fetchData = async (url) => {
-    try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error (response.status === 404 ?'Id doesnot exist' :'Network problems')
-      const data = await response.json()
-      return data
-    } catch (error) {
-      console.error('Some problems')
-      throw error
-    }
-  }
-  
   useEffect(() => {
     if (!resourceType) return
     const fetchItems = async () => {
       if (isShowById && id) {
         try {
-          const post = await fetchData(`https://jsonplaceholder.typicode.com/${resourceType}/${id}`)
-          setItems([post])
+          const items = await fetchData(`https://jsonplaceholder.typicode.com/${resourceType}/${id}`)
+          setItems([items])
         } catch (error) {
           setId('')
           setIsValidInput(false)
